@@ -1,0 +1,18 @@
+# Credenciales — NUNCA subir
+.env
+.streamlit/secrets.toml
+
+# Datos locales legacy
+data.json
+data_*.json
+users.json
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Sistema
+.DS_Store
+Thumbs.db
