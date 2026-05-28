@@ -5,6 +5,7 @@ import os
 import hashlib
 from datetime import datetime, date
 from supabase import create_client, Client
+from google import genai
 from dotenv import load_dotenv
 load_dotenv()
 import calendar
@@ -26,6 +27,57 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY", "")
 @st.cache_resource
 def get_supabase() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+def build_financial_context(data, mes, ingreso, total_gastado,
+                             presupuesto_reajustado, dia_actual,
+                             total_dias, dias_restantes, ahorro_proyectado):
+    gastos_mes = [g for g in data["gastos"] if g["fecha"].startswith(mes)]
+    cat_totals = {}
+    for g in gastos_mes:
+        cat_totals[g["categoria"]] = cat_totals.get(g["categoria"], 0) + float(g["monto"])
+    cat_str = "\n".join([
+        f"  - {k}: ${v:,.0f}" for k, v in sorted(cat_totals.items(), key=lambda x: -x[1])
+    ])
+    last5 = sorted(gastos_mes, key=lambda x: x["fecha"], reverse=True)[:5]
+    last5_str = "\n".join([
+        f"  - {g['fecha']} | {g['categoria']} | ${float(g['monto']):,.0f} | {g.get('descripcion','')}"
+        for g in last5
+    ])
+    fijos_str = "\n".join([
+        f"  - {f['nombre']}: ${float(f['monto']):,.0f}"
+        for f in data.get("gastos_fijos", [])
+    ])
+    pct = (total_gastado / ingreso * 100) if ingreso > 0 else 0
+    return (
+        "Sos un asesor financiero personal amigable y directo. "
+        "Respondé siempre en español argentino, de forma concisa y práctica. "
+        "No uses lenguaje técnico complejo.\n\n"
+        f"DATOS FINANCIEROS DEL USUARIO - {mes}:\n"
+        f"- Ingreso mensual: ${ingreso:,.0f}\n"
+        f"- Dia actual: {dia_actual} de {total_dias}\n"
+        f"- Dias restantes: {dias_restantes}\n"
+        f"- Total gastado hasta hoy: ${total_gastado:,.0f} ({pct:.1f}% del ingreso)\n"
+        f"- Presupuesto diario reajustado: ${presupuesto_reajustado:,.0f}/dia\n"
+        f"- Dinero restante proyectado: ${ahorro_proyectado:,.0f}\n\n"
+        f"GASTOS POR CATEGORIA:\n{cat_str or '  (sin gastos registrados)'}\n\n"
+        f"ULTIMOS 5 GASTOS:\n{last5_str or '  (sin gastos registrados)'}\n\n"
+        f"GASTOS FIJOS MENSUALES:\n{fijos_str or '  (sin gastos fijos)'}"
+    )
+
+
+def call_gemini(prompt, context):
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        full_prompt = context + "\n\nPREGUNTA O TAREA: " + prompt
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=full_prompt,
+        )
+        return response.text
+    except Exception as e:
+        return f"Error al conectar con el asesor IA: {str(e)}"
+
 
 DEFAULT_CATEGORIES = [
     "Alimentación", "Transporte", "Salud", "Entretenimiento",
@@ -388,7 +440,7 @@ with st.sidebar:
     st.markdown("---")
     page = st.radio(
         "Navegación",
-        ["🏠 Resumen", "💵 Ingresos", "🧾 Gastos", "📌 Gastos Fijos", "📊 Gráficos"],
+        ["🏠 Resumen", "💵 Ingresos", "🧾 Gastos", "📌 Gastos Fijos", "📊 Gráficos", "🤖 Asesor IA"],
         label_visibility="collapsed",
     )
     st.markdown("---")
@@ -544,6 +596,23 @@ if page == "🏠 Resumen":
         df = pd.DataFrame(gastos_mes).sort_values("fecha", ascending=False).head(10)
         df.columns = [c.title() for c in df.columns]
         st.dataframe(df, use_container_width=True, hide_index=True)
+
+    if ingreso > 0 and GEMINI_API_KEY:
+        st.markdown('<div class="sec-title">🤖 Análisis del mes</div>', unsafe_allow_html=True)
+        if st.button('✨ Generar análisis con IA', use_container_width=False):
+            with st.spinner('Analizando tus finanzas...'):
+                ctx = build_financial_context(
+                    data, mes, ingreso, total_gastado, presupuesto_reajustado,
+                    dia_actual, total_dias, dias_restantes, ahorro_proyectado
+                )
+                analysis = call_gemini(
+                    'Analiza mis finanzas del mes y dame un resumen con: '
+                    '1) como voy en general, 2) en que categoria gasto mas, '
+                    '3) si voy a llegar bien a fin de mes, 4) un consejo concreto. '
+                    'Se directo y breve, maximo 5 oraciones.',
+                    ctx
+                )
+            st.info(analysis)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE: INGRESOS
@@ -783,3 +852,69 @@ elif page == "📊 Gráficos":
             summary["% del ingreso"] = (summary["Total"] / ingreso * 100).map("{:.1f}%".format)
         summary["Total"] = summary["Total"].map("${:,}".format)
         st.dataframe(summary, use_container_width=True, hide_index=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: ASESOR IA
+# ══════════════════════════════════════════════════════════════════════════════
+elif page == "🤖 Asesor IA":
+    st.markdown("<h1>🤖 Asesor IA</h1>", unsafe_allow_html=True)
+    st.markdown("Hacé preguntas sobre tus finanzas y el asesor responde con datos reales de tu cuenta.")
+
+    if not GEMINI_API_KEY:
+        st.error("No hay API key de Gemini configurada. Agregala en el archivo .env o en Streamlit Secrets.")
+    elif ingreso == 0:
+        st.warning("Carga tu ingreso mensual primero para que el asesor tenga contexto.")
+    else:
+        ctx = build_financial_context(
+            data, mes, ingreso, total_gastado, presupuesto_reajustado,
+            dia_actual, total_dias, dias_restantes, ahorro_proyectado
+        )
+
+        if "chat_history" not in st.session_state:
+            st.session_state.chat_history = []
+
+        # Suggested questions
+        st.markdown('<div class="sec-title">Preguntas sugeridas</div>', unsafe_allow_html=True)
+        sugerencias = [
+            "En que categoria gasto mas?",
+            "Voy a llegar bien a fin de mes?",
+            "Dame 3 consejos para ahorrar",
+            "Puedo gastar $10.000 esta semana?",
+            "Como estan mis gastos fijos?",
+        ]
+        cols = st.columns(3)
+        for i, s in enumerate(sugerencias):
+            if cols[i % 3].button(s, key=f"sug_{i}", use_container_width=True):
+                st.session_state.chat_history.append({"role": "user", "content": s})
+                with st.spinner("Pensando..."):
+                    resp = call_gemini(s, ctx)
+                st.session_state.chat_history.append({"role": "assistant", "content": resp})
+                st.rerun()
+
+        # Chat history
+        if st.session_state.chat_history:
+            st.markdown('<div class="sec-title">Conversacion</div>', unsafe_allow_html=True)
+            for msg in st.session_state.chat_history:
+                if msg["role"] == "user":
+                    with st.chat_message("user"):
+                        st.write(msg["content"])
+                else:
+                    with st.chat_message("assistant"):
+                        st.write(msg["content"])
+
+        # Input form
+        st.markdown('<div class="sec-title">Tu pregunta</div>', unsafe_allow_html=True)
+        with st.form("chat_form", clear_on_submit=True):
+            user_input = st.text_input("Escribi tu pregunta...", placeholder="ej: Como voy este mes?")
+            send = st.form_submit_button("Enviar", use_container_width=False)
+            if send and user_input.strip():
+                st.session_state.chat_history.append({"role": "user", "content": user_input})
+                with st.spinner("Pensando..."):
+                    resp = call_gemini(user_input, ctx)
+                st.session_state.chat_history.append({"role": "assistant", "content": resp})
+                st.rerun()
+
+        if st.session_state.chat_history:
+            if st.button("Limpiar conversacion"):
+                st.session_state.chat_history = []
+                st.rerun()
