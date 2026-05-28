@@ -21,8 +21,9 @@ st.set_page_config(
 )
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-SUPABASE_URL = os.getenv("SUPABASE_URL") or st.secrets.get("SUPABASE_URL", "")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY", "")
+SUPABASE_URL   = os.getenv("SUPABASE_URL")   or st.secrets.get("SUPABASE_URL", "")
+SUPABASE_KEY   = os.getenv("SUPABASE_KEY")   or st.secrets.get("SUPABASE_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", "")
 
 @st.cache_resource
 def get_supabase() -> Client:
