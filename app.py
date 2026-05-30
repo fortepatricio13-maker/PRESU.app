@@ -23,7 +23,7 @@ st.set_page_config(
 # ── Constants ─────────────────────────────────────────────────────────────────
 SUPABASE_URL   = os.getenv("SUPABASE_URL")   or st.secrets.get("SUPABASE_URL", "")
 SUPABASE_KEY   = os.getenv("SUPABASE_KEY")   or st.secrets.get("SUPABASE_KEY", "")
-GROK_API_KEY = os.getenv("GROK_API_KEY") or st.secrets.get("GROK_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY", "")
 
 @st.cache_resource
 def get_supabase() -> Client:
@@ -70,11 +70,11 @@ def build_financial_context(data, mes, ingreso, total_gastado,
 def call_grok(prompt, context):
     try:
         client = OpenAI(
-            api_key=GROK_API_KEY,
-            base_url="https://api.x.ai/v1",
+            api_key=GROQ_API_KEY,
+            base_url="https://api.groq.com/openai/v1",
         )
         response = client.chat.completions.create(
-            model="grok-3-mini",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": context},
                 {"role": "user",   "content": prompt},
@@ -603,7 +603,7 @@ if page == "🏠 Resumen":
         df.columns = [c.title() for c in df.columns]
         st.dataframe(df, use_container_width=True, hide_index=True)
 
-    if ingreso > 0 and GROK_API_KEY:
+    if ingreso > 0 and GROQ_API_KEY:
         st.markdown('<div class="sec-title">🤖 Análisis del mes</div>', unsafe_allow_html=True)
         if st.button('✨ Generar análisis con IA', use_container_width=False):
             with st.spinner('Analizando tus finanzas...'):
@@ -866,7 +866,7 @@ elif page == "🤖 Asesor IA":
     st.markdown("<h1>🤖 Asesor IA</h1>", unsafe_allow_html=True)
     st.markdown("Hacé preguntas sobre tus finanzas y el asesor responde con datos reales de tu cuenta.")
 
-    if not GROK_API_KEY:
+    if not GROQ_API_KEY:
         st.error("No hay API key de Gemini configurada. Agregala en el archivo .env o en Streamlit Secrets.")
     elif ingreso == 0:
         st.warning("Carga tu ingreso mensual primero para que el asesor tenga contexto.")
