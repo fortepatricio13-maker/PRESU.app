@@ -5,7 +5,7 @@ import os
 import hashlib
 from datetime import datetime, date
 from supabase import create_client, Client
-from google import genai
+from openai import OpenAI
 from dotenv import load_dotenv
 load_dotenv()
 import calendar
@@ -23,7 +23,7 @@ st.set_page_config(
 # ── Constants ─────────────────────────────────────────────────────────────────
 SUPABASE_URL   = os.getenv("SUPABASE_URL")   or st.secrets.get("SUPABASE_URL", "")
 SUPABASE_KEY   = os.getenv("SUPABASE_KEY")   or st.secrets.get("SUPABASE_KEY", "")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", "")
+GROK_API_KEY = os.getenv("GROK_API_KEY") or st.secrets.get("GROK_API_KEY", "")
 
 @st.cache_resource
 def get_supabase() -> Client:
@@ -67,15 +67,20 @@ def build_financial_context(data, mes, ingreso, total_gastado,
     )
 
 
-def call_gemini(prompt, context):
+def call_grok(prompt, context):
     try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        full_prompt = context + "\n\nPREGUNTA O TAREA: " + prompt
-        response = client.models.generate_content(
-            model="gemini-2.0-flash-lite",
-            contents=full_prompt,
+        client = OpenAI(
+            api_key=GROK_API_KEY,
+            base_url="https://api.x.ai/v1",
         )
-        return response.text
+        response = client.chat.completions.create(
+            model="grok-3-mini",
+            messages=[
+                {"role": "system", "content": context},
+                {"role": "user",   "content": prompt},
+            ],
+        )
+        return response.choices[0].message.content
     except Exception as e:
         return f"Error al conectar con el asesor IA: {str(e)}"
 
@@ -598,7 +603,7 @@ if page == "🏠 Resumen":
         df.columns = [c.title() for c in df.columns]
         st.dataframe(df, use_container_width=True, hide_index=True)
 
-    if ingreso > 0 and GEMINI_API_KEY:
+    if ingreso > 0 and GROK_API_KEY:
         st.markdown('<div class="sec-title">🤖 Análisis del mes</div>', unsafe_allow_html=True)
         if st.button('✨ Generar análisis con IA', use_container_width=False):
             with st.spinner('Analizando tus finanzas...'):
@@ -606,7 +611,7 @@ if page == "🏠 Resumen":
                     data, mes, ingreso, total_gastado, presupuesto_reajustado,
                     dia_actual, total_dias, dias_restantes, ahorro_proyectado
                 )
-                analysis = call_gemini(
+                analysis = call_grok(
                     'Analiza mis finanzas del mes y dame un resumen con: '
                     '1) como voy en general, 2) en que categoria gasto mas, '
                     '3) si voy a llegar bien a fin de mes, 4) un consejo concreto. '
@@ -861,7 +866,7 @@ elif page == "🤖 Asesor IA":
     st.markdown("<h1>🤖 Asesor IA</h1>", unsafe_allow_html=True)
     st.markdown("Hacé preguntas sobre tus finanzas y el asesor responde con datos reales de tu cuenta.")
 
-    if not GEMINI_API_KEY:
+    if not GROK_API_KEY:
         st.error("No hay API key de Gemini configurada. Agregala en el archivo .env o en Streamlit Secrets.")
     elif ingreso == 0:
         st.warning("Carga tu ingreso mensual primero para que el asesor tenga contexto.")
@@ -888,7 +893,7 @@ elif page == "🤖 Asesor IA":
             if cols[i % 3].button(s, key=f"sug_{i}", use_container_width=True):
                 st.session_state.chat_history.append({"role": "user", "content": s})
                 with st.spinner("Pensando..."):
-                    resp = call_gemini(s, ctx)
+                    resp = call_grok(s, ctx)
                 st.session_state.chat_history.append({"role": "assistant", "content": resp})
                 st.rerun()
 
@@ -911,7 +916,7 @@ elif page == "🤖 Asesor IA":
             if send and user_input.strip():
                 st.session_state.chat_history.append({"role": "user", "content": user_input})
                 with st.spinner("Pensando..."):
-                    resp = call_gemini(user_input, ctx)
+                    resp = call_grok(user_input, ctx)
                 st.session_state.chat_history.append({"role": "assistant", "content": resp})
                 st.rerun()
 
