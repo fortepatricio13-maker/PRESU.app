@@ -805,16 +805,32 @@ elif page == "📊 Gráficos":
 
         col1, col2 = st.columns(2)
 
+        DONUT_LAYOUT = dict(
+            showlegend=True,
+            legend=dict(
+                orientation="v", x=1.02, y=0.5,
+                font=dict(color="#000000", size=12),
+                bgcolor="rgba(255,255,255,0.8)",
+                bordercolor="#e2e8f0", borderwidth=1,
+            ),
+            font=dict(color="#000000"),
+            margin=dict(t=20, b=20, l=20, r=140),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
+
         with col1:
             st.markdown('<div class="sec-title">Distribución de gastos por categoría</div>', unsafe_allow_html=True)
-            fig1 = px.pie(by_cat, values="Total", names="Categoría", hole=0.45,
+            fig1 = px.pie(by_cat, values="Total", names="Categoría", hole=0.5,
                           color_discrete_sequence=px.colors.qualitative.Set3)
-            fig1.update_traces(textposition="outside", textinfo="percent+label", textfont=dict(color="#000000", size=12))
-            fig1.update_layout(showlegend=True,
-                               legend=dict(orientation="v", x=1.0, y=0.5, font=dict(color="#000000")),
-                               font=dict(color="#000000"),
-                               margin=dict(t=30,b=30,l=10,r=10),
-                               paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig1.update_traces(
+                textposition="inside",
+                textinfo="percent",
+                textfont=dict(color="#000000", size=12),
+                hovertemplate="<b>%{label}</b><br>$%{value:,.0f}<br>%{percent}<extra></extra>",
+                pull=[0.03] * len(by_cat),
+            )
+            fig1.update_layout(**DONUT_LAYOUT)
             st.plotly_chart(fig1, use_container_width=True)
 
         with col2:
@@ -827,16 +843,16 @@ elif page == "📊 Gráficos":
                                         "% del ingreso": max(0, (ingreso - total_gastado) / ingreso * 100)}])
                 by_cat_full = pd.concat([by_cat_pct, extra], ignore_index=True)
                 colors = px.colors.qualitative.Set3[:len(by_cat_pct)] + ["#6ee7b7"]
-                fig2 = px.pie(by_cat_full, values="Total", names="Categoría", hole=0.45,
+                fig2 = px.pie(by_cat_full, values="Total", names="Categoría", hole=0.5,
                               color_discrete_sequence=colors, custom_data=["% del ingreso"])
-                fig2.update_traces(textposition="outside", textinfo="percent+label",
-                                   textfont=dict(color="#000000", size=12),
-                                   hovertemplate="%{label}: $%{value:,.0f} (%{customdata[0]:.1f}% del ingreso)<extra></extra>")
-                fig2.update_layout(showlegend=True,
-                                   legend=dict(orientation="v", x=1.0, y=0.5, font=dict(color="#000000")),
-                                   font=dict(color="#000000"),
-                                   margin=dict(t=30,b=30,l=10,r=10),
-                                   paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                fig2.update_traces(
+                    textposition="inside",
+                    textinfo="percent",
+                    textfont=dict(color="#000000", size=12),
+                    hovertemplate="<b>%{label}</b><br>$%{value:,.0f}<br>%{customdata[0]:.1f}% del ingreso<extra></extra>",
+                    pull=[0.03] * len(by_cat_full),
+                )
+                fig2.update_layout(**DONUT_LAYOUT)
                 st.plotly_chart(fig2, use_container_width=True)
             else:
                 st.info("Cargá el ingreso del mes para ver este gráfico.")
