@@ -594,8 +594,8 @@ if page == "🏠 Resumen":
             st.progress(pct, text=f"Gastado: {pct*100:.1f}% del ingreso")
             st.progress(pct_dia, text=f"Tiempo transcurrido: {pct_dia*100:.1f}% del mes")
         with col_b:
-            st.metric("Días restantes", dias_restantes)
             st.metric("Presupuesto diario", f"${fmt(presupuesto_reajustado)}/día")
+            st.metric("Días restantes", dias_restantes)
 
     if gastos_mes:
         st.markdown('<div class="sec-title">Últimos gastos</div>', unsafe_allow_html=True)
