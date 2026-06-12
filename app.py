@@ -349,11 +349,14 @@ div[data-baseweb="popover"] p {
 }
 
 /* Buttons: white text */
-.stButton > button {
+.stButton > button,
+.stFormSubmitButton > button {
     color: #ffffff !important;
 }
 .stButton > button p,
-.stButton > button span {
+.stButton > button span,
+.stFormSubmitButton > button p,
+.stFormSubmitButton > button span {
     color: #ffffff !important;
 }
 
