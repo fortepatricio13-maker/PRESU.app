@@ -803,59 +803,58 @@ elif page == "📊 Gráficos":
         by_cat.columns = ["Categoría", "Total"]
         by_cat = by_cat.sort_values("Total", ascending=False)
 
-        col1, col2 = st.columns(2)
-
         DONUT_LAYOUT = dict(
             showlegend=True,
             legend=dict(
-                orientation="v", x=1.02, y=0.5,
+                orientation="h",
+                x=0.5, xanchor="center",
+                y=-0.08, yanchor="top",
                 font=dict(color="#000000", size=12),
                 bgcolor="rgba(255,255,255,0.8)",
                 bordercolor="#e2e8f0", borderwidth=1,
             ),
             font=dict(color="#000000"),
-            margin=dict(t=20, b=20, l=20, r=140),
+            margin=dict(t=20, b=100, l=40, r=40),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
+            height=420,
         )
 
-        with col1:
-            st.markdown('<div class="sec-title">Distribución de gastos por categoría</div>', unsafe_allow_html=True)
-            fig1 = px.pie(by_cat, values="Total", names="Categoría", hole=0.5,
-                          color_discrete_sequence=px.colors.qualitative.Set3)
-            fig1.update_traces(
-                textposition="inside",
-                textinfo="percent",
-                textfont=dict(color="#000000", size=12),
-                hovertemplate="<b>%{label}</b><br>$%{value:,.0f}<br>%{percent}<extra></extra>",
-                pull=[0.03] * len(by_cat),
-            )
-            fig1.update_layout(**DONUT_LAYOUT)
-            st.plotly_chart(fig1, use_container_width=True)
+        st.markdown('<div class="sec-title">Distribución de gastos por categoría</div>', unsafe_allow_html=True)
+        fig1 = px.pie(by_cat, values="Total", names="Categoría", hole=0.5,
+                      color_discrete_sequence=px.colors.qualitative.Set3)
+        fig1.update_traces(
+            textposition="auto",
+            textinfo="percent+label",
+            textfont=dict(color="#000000", size=13),
+            hovertemplate="<b>%{label}</b><br>$%{value:,.0f}<br>%{percent}<extra></extra>",
+            insidetextorientation="radial",
+        )
+        fig1.update_layout(**DONUT_LAYOUT)
+        st.plotly_chart(fig1, use_container_width=True)
 
-        with col2:
+        if ingreso > 0:
             st.markdown('<div class="sec-title">Gastos como % del ingreso mensual</div>', unsafe_allow_html=True)
-            if ingreso > 0:
-                by_cat_pct = by_cat.copy()
-                by_cat_pct["% del ingreso"] = by_cat_pct["Total"] / ingreso * 100
-                extra = pd.DataFrame([{"Categoría": "💚 Ahorro",
-                                        "Total": max(0, ingreso - total_gastado),
-                                        "% del ingreso": max(0, (ingreso - total_gastado) / ingreso * 100)}])
-                by_cat_full = pd.concat([by_cat_pct, extra], ignore_index=True)
-                colors = px.colors.qualitative.Set3[:len(by_cat_pct)] + ["#6ee7b7"]
-                fig2 = px.pie(by_cat_full, values="Total", names="Categoría", hole=0.5,
-                              color_discrete_sequence=colors, custom_data=["% del ingreso"])
-                fig2.update_traces(
-                    textposition="inside",
-                    textinfo="percent",
-                    textfont=dict(color="#000000", size=12),
-                    hovertemplate="<b>%{label}</b><br>$%{value:,.0f}<br>%{customdata[0]:.1f}% del ingreso<extra></extra>",
-                    pull=[0.03] * len(by_cat_full),
-                )
-                fig2.update_layout(**DONUT_LAYOUT)
-                st.plotly_chart(fig2, use_container_width=True)
-            else:
-                st.info("Cargá el ingreso del mes para ver este gráfico.")
+            by_cat_pct = by_cat.copy()
+            by_cat_pct["% del ingreso"] = by_cat_pct["Total"] / ingreso * 100
+            extra = pd.DataFrame([{"Categoría": "💚 Ahorro",
+                                    "Total": max(0, ingreso - total_gastado),
+                                    "% del ingreso": max(0, (ingreso - total_gastado) / ingreso * 100)}])
+            by_cat_full = pd.concat([by_cat_pct, extra], ignore_index=True)
+            colors = px.colors.qualitative.Set3[:len(by_cat_pct)] + ["#6ee7b7"]
+            fig2 = px.pie(by_cat_full, values="Total", names="Categoría", hole=0.5,
+                          color_discrete_sequence=colors, custom_data=["% del ingreso"])
+            fig2.update_traces(
+                textposition="auto",
+                textinfo="percent+label",
+                textfont=dict(color="#000000", size=13),
+                hovertemplate="<b>%{label}</b><br>$%{value:,.0f}<br>%{customdata[0]:.1f}% del ingreso<extra></extra>",
+                insidetextorientation="radial",
+            )
+            fig2.update_layout(**DONUT_LAYOUT)
+            st.plotly_chart(fig2, use_container_width=True)
+        else:
+            st.info("Cargá el ingreso del mes para ver el segundo gráfico.")
 
         st.markdown('<div class="sec-title">Gasto diario vs presupuesto</div>', unsafe_allow_html=True)
         df_plot["dia"] = pd.to_datetime(df_plot["fecha"]).dt.day
