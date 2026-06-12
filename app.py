@@ -348,6 +348,15 @@ div[data-baseweb="popover"] p {
     background-color: #334155 !important;
 }
 
+/* Buttons: white text */
+.stButton > button {
+    color: #ffffff !important;
+}
+.stButton > button p,
+.stButton > button span {
+    color: #ffffff !important;
+}
+
 /* User badge in sidebar */
 .user-badge {
     background: rgba(99,102,241,.25); border-radius: 10px;
