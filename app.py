@@ -814,10 +814,10 @@ elif page == "📊 Gráficos":
                 bordercolor="#e2e8f0", borderwidth=1,
             ),
             font=dict(color="#000000"),
-            margin=dict(t=20, b=100, l=40, r=40),
+            margin=dict(t=20, b=120, l=40, r=40),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            height=420,
+            height=600,
         )
 
         st.markdown('<div class="sec-title">Distribución de gastos por categoría</div>', unsafe_allow_html=True)
